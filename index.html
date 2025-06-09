@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard de Costos de Producción</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .kpi-card {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 25px;
+            text-align: center;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            transition: transform 0.3s ease;
+        }
+        
+        .kpi-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .kpi-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        
+        .kpi-label {
+            color: #666;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .direct-costs { color: #28a745; }
+        .indirect-costs { color: #fd7e14; }
+        .total-costs { color: #6f42c1; }
+        .unit-cost { color: #dc3545; }
+        
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .chart-container {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+        
+        .chart-title {
+            text-align: center;
+            margin-bottom: 20px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .input-section {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .input-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        
+        .input-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .input-group label {
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        .input-group input {
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .table-container {
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            overflow-x: auto;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        
+        th, td {
+            padding: 12px;
+            text-align: right;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+        
+        .total-row {
+            background: #e3f2fd;
+            font-weight: bold;
+        }
+        
+        @media (max-width: 768px) {
+            .charts-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .header h1 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📊 Dashboard de Costos de Producción</h1>
+            <p>Análisis Integral de Costos Directos e Indirectos</p>
+        </div>
+        
+        <div class="input-section">
+            <h3 style="margin-bottom: 20px; text-align: center;">🔧 Panel de Control - Ingresa tus datos</h3>
+            <div class="input-grid">
+                <div class="input-group">
+                    <label>Materia Prima (S/)</label>
+                    <input type="number" id="materiaPrima" value="15000" onchange="calcularCostos()">
+                </div>
+                <div class="input-group">
+                    <label>Mano de Obra Directa (S/)</label>
+                    <input type="number" id="manoObraDirecta" value="8000" onchange="calcularCostos()">
+                </div>
+                <div class="input-group">
+                    <label>Otros Costos Directos (S/)</label>
+                    <input type="number" id="otrosDirectos" value="2000" onchange="calcularCostos()">
+                </div>
+                <div class="input-group">
+                    <label>Alquiler/Depreciación (S/)</label>
+                    <input type="number" id="alquiler" value="3000" onchange="calcularCostos()">
+                </div>
+                <div class="input-group">
+                    <label>Servicios Públicos (S/)</label>
+                    <input type="number" id="servicios" value="1500" onchange="calcularCostos()">
+                </div>
+                <div class="input-group">
+                    <label>Supervisión (S/)</label>
+                    <input type="number" id="supervision" value="2500" onchange="calcularCostos()">
+                </div>
+                <div class="input-group">
+                    <label>Mantenimiento (S/)</label>
+                    <input type="number" id="mantenimiento" value="1000" onchange="calcularCostos()">
+                </div>
+                <div class="input-group">
+                    <label>Unidades Producidas</label>
+                    <input type="number" id="unidades" value="500" onchange="calcularCostos()">
+                </div>
+            </div>
+        </div>
+        
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-value direct-costs" id="costosDirectosKPI">S/ 25,000</div>
+                <div class="kpi-label">Costos Directos</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value indirect-costs" id="costosIndirectosKPI">S/ 8,000</div>
+                <div class="kpi-label">Costos Indirectos</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value total-costs" id="costosTotalesKPI">S/ 33,000</div>
+                <div class="kpi-label">Costos Totales</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-value unit-cost" id="costoUnitarioKPI">S/ 66.00</div>
+                <div class="kpi-label">Costo Unitario</div>
+            </div>
+        </div>
+        
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-title">🥧 Composición de Costos</div>
+                <canvas id="pieChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">📊 Comparativo Directo vs Indirecto</div>
+                <canvas id="barChart"></canvas>
+            </div>
+        </div>
+        
+        <div class="table-container">
+            <h3 style="text-align: center; margin-bottom: 15px;">📋 Detalle de Costos por Categoría</h3>
+            <table id="costTable">
+                <thead>
+                    <tr>
+                        <th style="text-align: left;">Concepto</th>
+                        <th>Monto (S/)</th>
+                        <th>% del Total</th>
+                        <th>Tipo</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Datos se llenan dinámicamente -->
+                </tbody>
+            </table>
+        </div>
+        
+        <div class="charts-grid">
+            <div class="chart-container">
+                <div class="chart-title">📈 Análisis de Sensibilidad - Costo Unitario</div>
+                <canvas id="sensitivityChart"></canvas>
+            </div>
+            <div class="chart-container">
+                <div class="chart-title">🎯 Punto de Equilibrio</div>
+                <canvas id="breakEvenChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let pieChart, barChart, sensitivityChart, breakEvenChart;
+        
+        function calcularCostos() {
+            // Obtener valores
+            const materiaPrima = parseFloat(document.getElementById('materiaPrima').value) || 0;
+            const manoObraDirecta = parseFloat(document.getElementById('manoObraDirecta').value) || 0;
+            const otrosDirectos = parseFloat(document.getElementById('otrosDirectos').value) || 0;
+            const alquiler = parseFloat(document.getElementById('alquiler').value) || 0;
+            const servicios = parseFloat(document.getElementById('servicios').value) || 0;
+            const supervision = parseFloat(document.getElementById('supervision').value) || 0;
+            const mantenimiento = parseFloat(document.getElementById('mantenimiento').value) || 0;
+            const unidades = parseFloat(document.getElementById('unidades').value) || 1;
+            
+            // Calcular totales
+            const costosDirectos = materiaPrima + manoObraDirecta + otrosDirectos;
+            const costosIndirectos = alquiler + servicios + supervision + mantenimiento;
+            const costosTotales = costosDirectos + costosIndirectos;
+            const costoUnitario = costosTotales / unidades;
+            
+            // Actualizar KPIs
+            document.getElementById('costosDirectosKPI').textContent = `S/ ${costosDirectos.toLocaleString()}`;
+            document.getElementById('costosIndirectosKPI').textContent = `S/ ${costosIndirectos.toLocaleString()}`;
+            document.getElementById('costosTotalesKPI').textContent = `S/ ${costosTotales.toLocaleString()}`;
+            document.getElementById('costoUnitarioKPI').textContent = `S/ ${costoUnitario.toFixed(2)}`;
+            
+            // Actualizar tabla
+            actualizarTabla({
+                materiaPrima, manoObraDirecta, otrosDirectos,
+                alquiler, servicios, supervision, mantenimiento,
+                costosDirectos, costosIndirectos, costosTotales
+            });
+            
+            // Actualizar gráficos
+            actualizarGraficos({
+                costosDirectos, costosIndirectos, costosTotales,
+                materiaPrima, manoObraDirecta, otrosDirectos,
+                alquiler, servicios, supervision, mantenimiento,
+                costoUnitario, unidades
+            });
+        }
+        
+        function actualizarTabla(datos) {
+            const tbody = document.querySelector('#costTable tbody');
+            const total = datos.costosTotales;
+            
+            tbody.innerHTML = `
+                <tr>
+                    <td style="text-align: left;">Materia Prima</td>
+                    <td>S/ ${datos.materiaPrima.toLocaleString()}</td>
+                    <td>${((datos.materiaPrima/total)*100).toFixed(1)}%</td>
+                    <td>Directo</td>
+                </tr>
+                <tr>
+                    <td style="text-align: left;">Mano de Obra Directa</td>
+                    <td>S/ ${datos.manoObraDirecta.toLocaleString()}</td>
+                    <td>${((datos.manoObraDirecta/total)*100).toFixed(1)}%</td>
+                    <td>Directo</td>
+                </tr>
+                <tr>
+                    <td style="text-align: left;">Otros Costos Directos</td>
+                    <td>S/ ${datos.otrosDirectos.toLocaleString()}</td>
+                    <td>${((datos.otrosDirectos/total)*100).toFixed(1)}%</td>
+                    <td>Directo</td>
+                </tr>
+                <tr>
+                    <td style="text-align: left;">Alquiler/Depreciación</td>
+                    <td>S/ ${datos.alquiler.toLocaleString()}</td>
+                    <td>${((datos.alquiler/total)*100).toFixed(1)}%</td>
+                    <td>Indirecto</td>
+                </tr>
+                <tr>
+                    <td style="text-align: left;">Servicios Públicos</td>
+                    <td>S/ ${datos.servicios.toLocaleString()}</td>
+                    <td>${((datos.servicios/total)*100).toFixed(1)}%</td>
+                    <td>Indirecto</td>
+                </tr>
+                <tr>
+                    <td style="text-align: left;">Supervisión</td>
+                    <td>S/ ${datos.supervision.toLocaleString()}</td>
+                    <td>${((datos.supervision/total)*100).toFixed(1)}%</td>
+                    <td>Indirecto</td>
+                </tr>
+                <tr>
+                    <td style="text-align: left;">Mantenimiento</td>
+                    <td>S/ ${datos.mantenimiento.toLocaleString()}</td>
+                    <td>${((datos.mantenimiento/total)*100).toFixed(1)}%</td>
+                    <td>Indirecto</td>
+                </tr>
+                <tr class="total-row">
+                    <td style="text-align: left;"><strong>TOTAL</strong></td>
+                    <td><strong>S/ ${datos.costosTotales.toLocaleString()}</strong></td>
+                    <td><strong>100.0%</strong></td>
+                    <td><strong>-</strong></td>
+                </tr>
+            `;
+        }
+        
+        function actualizarGraficos(datos) {
+            // Gráfico de torta
+            if (pieChart) pieChart.destroy();
+            const ctxPie = document.getElementById('pieChart').getContext('2d');
+            pieChart = new Chart(ctxPie, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Costos Directos', 'Costos Indirectos'],
+                    datasets: [{
+                        data: [datos.costosDirectos, datos.costosIndirectos],
+                        backgroundColor: ['#28a745', '#fd7e14'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+            
+            // Gráfico de barras
+            if (barChart) barChart.destroy();
+            const ctxBar = document.getElementById('barChart').getContext('2d');
+            barChart = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: ['Materia Prima', 'M.O. Directa', 'Otros Directos', 'Alquiler', 'Servicios', 'Supervisión', 'Mantenimiento'],
+                    datasets: [{
+                        label: 'Monto (S/)',
+                        data: [datos.materiaPrima, datos.manoObraDirecta, datos.otrosDirectos, datos.alquiler, datos.servicios, datos.supervision, datos.mantenimiento],
+                        backgroundColor: ['#28a745', '#28a745', '#28a745', '#fd7e14', '#fd7e14', '#fd7e14', '#fd7e14']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+            
+            // Análisis de sensibilidad
+            if (sensitivityChart) sensitivityChart.destroy();
+            const ctxSens = document.getElementById('sensitivityChart').getContext('2d');
+            const unidadesSens = [200, 300, 400, 500, 600, 700, 800];
+            const costosSens = unidadesSens.map(u => datos.costosTotales / u);
+            
+            sensitivityChart = new Chart(ctxSens, {
+                type: 'line',
+                data: {
+                    labels: unidadesSens,
+                    datasets: [{
+                        label: 'Costo Unitario (S/)',
+                        data: costosSens,
+                        borderColor: '#6f42c1',
+                        backgroundColor: 'rgba(111, 66, 193, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Unidades Producidas'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Costo Unitario (S/)'
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Punto de equilibrio (simulado)
+            if (breakEvenChart) breakEvenChart.destroy();
+            const ctxBreak = document.getElementById('breakEvenChart').getContext('2d');
+            const precioVenta = datos.costoUnitario * 1.5; // 50% margen
+            const unidadesBreak = Array.from({length: 10}, (_, i) => (i + 1) * 100);
+            const costosBreak = unidadesBreak.map(u => datos.costosIndirectos + (datos.costosDirectos / datos.unidades) * u);
+            const ventasBreak = unidadesBreak.map(u => precioVenta * u);
+            
+            breakEvenChart = new Chart(ctxBreak, {
+                type: 'line',
+                data: {
+                    labels: unidadesBreak,
+                    datasets: [{
+                        label: 'Costos Totales',
+                        data: costosBreak,
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)'
+                    }, {
+                        label: 'Ingresos',
+                        data: ventasBreak,
+                        borderColor: '#28a745',
+                        backgroundColor: 'rgba(40, 167, 69, 0.1)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    interaction: {
+                        intersect: false
+                    },
+                    scales: {
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Unidades'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Monto (S/)'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Inicializar al cargar la página
+        document.addEventListener('DOMContentLoaded', function() {
+            calcularCostos();
+        });
+    </script>
+</body>
+</html>
